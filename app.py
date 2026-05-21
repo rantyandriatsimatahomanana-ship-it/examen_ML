@@ -1,7 +1,16 @@
 import streamlit as st
 import joblib
 
-st.title("Prédiction des ventes")
+# Configuration de la page (Doit être la première commande Streamlit)
+st.set_page_config(
+    page_title="Prédiction des ventes",
+    page_icon="📈",
+    layout="centered" # "centered" ou "wide" selon votre préférence
+)
+
+st.title("📈 Prédiction des Ventes")
+st.markdown("Saisissez les caractéristiques ci-dessous pour estimer le volume des ventes.")
+st.write("---")
 
 @st.cache_resource
 def charger_modele():
@@ -10,33 +19,65 @@ def charger_modele():
 model = charger_modele()
 
 # ======================
-# STREAMLIT UI (8 variables d'origine)
+# STREAMLIT UI (Design amélioré)
 # ======================
-store_nbr = st.number_input("Store", 1, 50)
-family = st.number_input("Family (encodé)", 0, 100)
-city = st.number_input("City (encodé)", 0, 100)
-state = st.number_input("State (encodé)", 0, 100)
-onpromotion = st.number_input("Promotion", 0, 1)
 
-year = st.number_input("Year", 2013, 2030)
-month = st.number_input("Month", 1, 12)
-day = st.number_input("Day", 1, 31)
+# Organisation de la saisie à l'aide d'onglets pour alléger l'interface
+tab1, tab2 = st.tabs(["🏬 Informations Magasin & Produit", "📅 Calendrier & Promotions"])
 
-# ======================
-# AJOUT DES 3 VARIABLES MANQUANTES (Exemple à adapter)
-# ======================
-store_type = st.number_input("Store Type (encodé)", 0, 10)  # Variable manquante 1
-cluster = st.number_input("Store Cluster", 1, 25)           # Variable manquante 2
-dayofweek = st.number_input("Day of Week (0-6)", 0, 6)      # Variable manquante 3
-
-if st.button("Predict"):
-    # REGROUPEMENT DES 11 VARIABLES
-    # Attention : l'ordre des variables doit être STRICTEMENT le même que lors de l'entraînement
-    X_input = [[
-        store_nbr, family, city, state, onpromotion, 
-        year, month, day, 
-        store_type, cluster, dayofweek  # Les 3 ajouts
-    ]]
+with tab1:
+    st.subheader("Détails du Magasin et de l'Article")
     
-    pred = model.predict(X_input)
-    st.success(f"Ventes prévues : {pred[0]:.2f}")
+    col1, col2 = st.columns(2)
+    with col1:
+        store_nbr = st.number_input("Identifiant Magasin (Store)", min_value=1, max_value=50, value=1)
+        store_type = st.number_input("Type de Magasin (Store Type encodé)", min_value=0, max_value=10, value=0)
+        cluster = st.number_input("Cluster du Magasin", min_value=1, max_value=25, value=1)
+    
+    with col2:
+        family = st.number_input("Famille de produit (Family encodé)", min_value=0, max_value=100, value=0)
+        city = st.number_input("Ville (City encodé)", min_value=0, max_value=100, value=0)
+        state = st.number_input("État (State encodé)", min_value=0, max_value=100, value=0)
+
+with tab2:
+    st.subheader("Période et Promotion")
+    
+    col3, col4 = st.columns(2)
+    with col3:
+        # Utilisation de Sliders ou Selectbox pour une saisie plus ergonomique
+        year = st.slider("Année (Year)", min_value=2013, max_value=2030, value=2026)
+        month = st.slider("Mois (Month)", min_value=1, max_value=12, value=5)
+        day = st.slider("Jour (Day)", min_value=1, max_value=31, value=15)
+    
+    with col4:
+        dayofweek = st.selectbox(
+            "Jour de la semaine", 
+            options=[0, 1, 2, 3, 4, 5, 6], 
+            format_func=lambda x: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"][x]
+        )
+        
+        # Un bouton radio horizontal pour l'état de la promotion
+        onpromotion = st.radio("L'article est-il en promotion ?", options=[0, 1], format_func=lambda x: "Non" if x == 0 else "Oui", horizontal=True)
+
+st.write("---")
+
+# Zone de prédiction isolée dans un conteneur
+design_container = st.container()
+
+with design_container:
+    # Bouton centré et mis en valeur (utilisation de type="primary")
+    if st.button("🚀 Calculer les prévisions", type="primary", use_container_width=True):
+        
+        # REGROUPEMENT DES 11 VARIABLES (L'ordre strict est préservé)
+        X_input = [[
+            store_nbr, family, city, state, onpromotion, 
+            year, month, day, 
+            store_type, cluster, dayofweek
+        ]]
+        
+        with st.spinner('Calcul des prévisions en cours...'):
+            pred = model.predict(X_input)
+            
+        # Affichage du résultat sous forme de métrique attrayante
+        st.markdown("### 📊 Résultat de l'estimation")
+        st.metric(label="Volume de ventes prévu", value=f"{pred[0]:,.2f} unités")
